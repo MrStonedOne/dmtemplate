@@ -80,10 +80,10 @@
 	varSet = tokenSet.listRequestedVars()
 	valueSet = list()
 
-/datum/templateToken/TConditional/getRequestedVars() {
+/datum/templateToken/TConditional/getRequestedVars()
 	//doing it this way ensures our conditional variable is first but never duplicated
 	return (list(variable) | varSet)
-}
+
 /datum/templateToken/TConditional/setVar(variable, value = null)
 	if (variable == src.variable)
 		src.value = value
