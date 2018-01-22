@@ -11,7 +11,7 @@
 //name should be the name of a .tpl template file in template folder
 //name should be given without the .tpl extension
 //vars should be an associative array in the form of varname => vardata
-/datum/template/New(name, list/variables)
+/datum/template/New(name, list/variables = list())
 	if (!fexists("templates/[name].tpl"))
 		CRASH("No such file for template [name]")
 
@@ -23,9 +23,6 @@
 	file = name
 	src.variables = variables
 
-	#ifdef TESTING
-		setvar("TESTING", "TRUE")
-	#endif
 	if (tokenSets[name])
 		return
 
@@ -215,6 +212,9 @@
 
 
 /datum/template/proc/compute()
+	#ifdef TESTING
+		setvar("TESTING", "TRUE")
+	#endif
 	var/variables = src.variables
 	resetvars()
 
@@ -237,6 +237,4 @@
 
 
 /datum/template/proc/resetvars(list/variables)
-	world << "\ref[variables] ||| \ref[src.variables]"
 	src.variables = variables || list()
-	world << "\ref[variables] ||| \ref[src.variables]"

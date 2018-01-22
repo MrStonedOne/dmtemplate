@@ -39,9 +39,6 @@
 	var/value = ""
 
 /datum/templateToken/TVariable/New(variable)
-	variable = trim(variable)
-	if (!variable || variable == "")
-		CRASH("Argument must not be empty or consist of only whitespace")
 	src.variable = variable
 
 
@@ -165,7 +162,7 @@
 		valueSet = valueSet.Copy()
 		for (var/key in valueSet)
 			var/value = valueSet[key]
-			if (istype(value, /datum/template))
+			if (!istext(value) && !isnum(value) && istype(value, /datum/template))
 				var/datum/template/T = value
 				valueSet[key] = T.compute()
 		res += tokenSet.compute(valueSet)
@@ -206,7 +203,6 @@
 	for (var/variable in tokenVarMappings)
 		var/list/tokens = tokenVarMappings[variable]
 		var/value = variables[variable]
-		world << "2 `[variable]` = `[value]`"
 		if (!value)
 			for (var/thing in tokens)
 				var/datum/templateToken/token = thing
