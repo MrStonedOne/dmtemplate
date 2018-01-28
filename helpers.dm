@@ -18,3 +18,4 @@
 	if(max_length)
 		text = copytext(text, 1, max_length)
 	return trim_left(trim_right(text))
+

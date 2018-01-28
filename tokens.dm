@@ -1,7 +1,8 @@
 /*
  * Interface
  */
-
+/datum/templateToken
+	//var/
 //returns a list of template variables this token depends on.
 /datum/templateToken/proc/getRequestedVars()
 
@@ -62,6 +63,14 @@
 		return "{[variable]}"
 	return value
 
+/datum/templateToken/TVariable/escaped/compute()
+	return "{[variable]}"
+
+/datum/templateToken/TVariable/escaped/getRequestedVars()
+	return list()
+
+/datum/templateToken/TVariable/escaped/New(variable)
+	src.variable = copytext(variable, 2)
 
 /*
  * Conditionals
