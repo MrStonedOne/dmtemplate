@@ -197,7 +197,7 @@
 		if (T_TOKEN_VARIABLE)
 			return /datum/templateToken/TVariable
 		if (T_TOKEN_ESCAPED_VARIABLE)
-			return /datum/templateToken/TVariable/escaped
+			return /datum/templateToken/TStringLiteral
 		if (T_TOKEN_ENDIF)
 			return null
 		if (T_TOKEN_IFDEF)

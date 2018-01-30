@@ -63,14 +63,6 @@
 		return "{[variable]}"
 	return value
 
-/datum/templateToken/TVariable/escaped/compute()
-	return "{[variable]}"
-
-/datum/templateToken/TVariable/escaped/getRequestedVars()
-	return list()
-
-/datum/templateToken/TVariable/escaped/New(variable)
-	src.variable = copytext(variable, 2)
 
 /*
  * Conditionals
