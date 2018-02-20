@@ -2,15 +2,15 @@
 <hr/>
 
 <div class="container">
-	{#IFDEF:ERROR_MSG}
+	{#IFDEF:%ERROR_MSG}
 		<div class="alert alert-danger">
 			<strong>ERROR</strong> {ERROR_MSG}
 		</div>
-	{#ENDIF}{#IFNDEF:ERROR_MSG}
+	{#ENDIF}{#IFNDEF:%ERROR_MSG}
 	<div class="panel panel-default">
 		<div class="panel-heading" >
 			<h4 class="panel-title" >
-				User Details for {PLAYERCKEY} (<a href="http://www.byond.com/members/{CKEY}">Byond account</a>)
+				User Details for {%PLAYERCKEY} ({%}<a href="http://www.byond.com/members/{CKEY}">Byond account</a>{/%})
 			</h4>
 		</div>
 		<div class="panel">
@@ -249,10 +249,10 @@
 					</thead>
 					<tbody>
 						{#ARRAY:IPS}
-							<tr>
+							<tr> {%}
 								<td style="padding:0px">{IP}</td>
 								<td style="padding:0px">{ROUNDS}</td>
-							</tr>
+							{/%} </tr>
 						{#ENDIF}
 					</tbody>
 				</table>
