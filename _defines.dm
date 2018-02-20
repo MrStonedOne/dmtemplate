@@ -7,5 +7,13 @@
 #define T_TOKEN_ARRAY 6
 #define T_TOKEN_IFEMPTY 7
 #define T_TOKEN_IFNEMPTY 8
+#define T_TOKEN_UPDATING_BLOCK 9
+
+#define T_UPDATE_REPLACE "REPLACE"
+#define T_UPDATE_APPEND "APPEND"
+#define T_UPDATE_PREPEND "PREPEND"
+#define T_UPDATE_ADD_BEFORE "BEFORE"
+#define T_UPDATE_ADD_AFTER "AFTER"
+#define T_UPDATE_REMOVE "REMOVE"
 
 #define islist(thing) istype(thing, /list)

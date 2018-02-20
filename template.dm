@@ -3,6 +3,7 @@
 
 /datum/template
 	var/static/list/tokenSets = list()
+	var/datum/tokenSet/tokenSet
 	var/list/variables
 	var/file
 
@@ -23,18 +24,21 @@
 	file = name
 	src.variables = variables
 
-	if (tokenSets[name])
-		return
-
-	tokenSets[name] = makeTokenSet(file2text("templates/[name].tpl"))
-
+	if (!tokenSets[name])
+		tokenSets[name] = makeTokenSet(file2text("templates/[name].tpl"))
+	var/datum/tokenSet/TS = tokenSets[name]
+	tokenSet = TS.dupe()
+	#ifdef TESTING
+		setvar("TESTING", "TRUE")
+	#endif
 
 
 //Generates (and returns) a tokenSet object from the template text passed to it.
 //	this function is recursive
 //The broad overview is that the proc loops through the provided text character by character and
-//	puts the character into one of 3 buckets based on state. Creating token objects when it can
-/datum/template/proc/makeTokenSet(tplText)
+//	puts the character into one of 3 buckets based on state. Creating token objects when it can.
+//tplText can be a list of characters or a string.
+/datum/template/proc/makeTokenSet(tplText, name = name)
 	var/list/tokenGroup = list()
 
 	//buckets
@@ -85,7 +89,7 @@
 
 					//make the token and add it, parsing its block as a separate tokenset
 					var/path = ttype2type(cType)
-					tokenGroup += new path (cvar, makeTokenSet(stringLit))
+					tokenGroup += new path (null, cvar, makeTokenSet(stringLit, "[name]"))
 
 					//reset state and continue
 					bracket = FALSE
@@ -108,7 +112,7 @@
 					conditionalSkips = 1
 
 					if (length(stringLit))
-						tokenGroup += new /datum/templateToken/TStringLiteral(stringLit.Join(""))
+						tokenGroup += new /datum/templateToken/TStringLiteral(null, stringLit.Join(""))
 					bracketTemp = list()
 					stringLit = list()
 					bracket = FALSE
@@ -116,9 +120,9 @@
 				else
 					var/list/tVar = bracketTemp.Copy(2, bracketTemp.len)
 					if (length(stringLit))
-						tokenGroup += new /datum/templateToken/TStringLiteral(stringLit.Join(""))
+						tokenGroup += new /datum/templateToken/TStringLiteral(null, stringLit.Join(""))
 					var/tPath = ttype2type(tType)
-					tokenGroup += new tPath (tVar.Join(""))
+					tokenGroup += new tPath (null, tVar.Join(""))
 					bracketTemp = list()
 					stringLit = list()
 					bracket = FALSE
@@ -148,12 +152,12 @@
 
 		//make the token and add it, parsing its block as a separate tokenset
 		var/path = ttype2type(cType)
-		tokenGroup += new path (cvar, makeTokenSet(stringLit))
+		tokenGroup += new path (null, cvar, makeTokenSet(stringLit))
 		stringLit = list()
 
 
 	if (length(stringLit)) //finalize the end of the file into a stringLit
-		tokenGroup += new /datum/templateToken/TStringLiteral(stringLit.Join(""))
+		tokenGroup += new /datum/templateToken/TStringLiteral(null, stringLit.Join(""))
 
 	return new /datum/tokenSet(tokenGroup)
 
@@ -184,9 +188,15 @@
 
 				if ("IFNEMPTY")
 					tType = T_TOKEN_IFNEMPTY
+
 		if ("!")
 			tType = T_TOKEN_ESCAPED_VARIABLE
 
+		if ("%")
+			if (length(token) == 3)
+				tType = T_TOKEN_UPDATING_BLOCK
+		if ("/")
+			tType = T_TOKEN_ENDIF
 
 	return tType
 
@@ -197,7 +207,7 @@
 		if (T_TOKEN_VARIABLE)
 			return /datum/templateToken/TVariable
 		if (T_TOKEN_ESCAPED_VARIABLE)
-			return /datum/templateToken/TStringLiteral
+			return /datum/templateToken/TStringLiteral/TEscapedVariable
 		if (T_TOKEN_ENDIF)
 			return null
 		if (T_TOKEN_IFDEF)
@@ -210,28 +220,16 @@
 			return /datum/templateToken/TConditional/TIfEmpty
 		if (T_TOKEN_IFNEMPTY)
 			return /datum/templateToken/TConditional/TIfnEmpty
+		if (T_TOKEN_UPDATING_BLOCK)
+			return /datum/templateToken/TConditional/TUpdatingBlock
 		else
 			CRASH("Invalid tType")
 
 /datum/template/proc/compute()
-	#ifdef TESTING
-		setvar("TESTING", "TRUE")
-	#endif
-	var/variables = src.variables
-	resetvars()
-
-	for (var/name in variables)
-		var/data = variables[name]
-		if (istype(data, /datum/template))
-			var/datum/template/T = data
-			variables[name] = T.compute()
-
-
-	var/datum/tokenSet/tokenSet = tokenSets[file]
-
 	return jointext(tokenSet.compute(variables), "")
 
-
+/datum/template/proc/computeDiff(newVars)
+	return tokenSet.computeDiff(newVars)
 
 
 /datum/template/proc/setvar(name, variable)
