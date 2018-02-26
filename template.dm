@@ -13,7 +13,7 @@
 //name should be given without the .tpl extension
 //vars should be an associative array in the form of varname => vardata
 /datum/template/New(name, list/variables = list())
-	if (!fexists("templates/[name].tpl"))
+	if (name && !fexists("templates/[name].tpl"))
 		CRASH("No such file for template [name]")
 
 
@@ -23,7 +23,8 @@
 
 	file = name
 	src.variables = variables
-
+	if (!name)
+		return
 	if (!tokenSets[name])
 		tokenSets[name] = makeTokenSet(file2text("templates/[name].tpl"))
 	var/datum/tokenSet/TS = tokenSets[name]
@@ -140,21 +141,8 @@
 	//reached the end, finalize things.
 	stringLit += bracketTemp
 
-	if (conditionalSkips > 0) //no matching endif block, wrap the rest of the file up into the conditional token
-		#ifdef TESTING
-		world.log << "WARNING token [name] conditional block reached end of file without closure. This is supported but not always intended"
-		#endif
-		var/cType = tokenType(conditionalToken);//stored starting conditional token
-		var/cvar = "" //what var does the condition rely on.
-		var/cvar_start = conditionalToken.Find(":")
-		if (cvar_start) //conditional tokens without a reliant var is valid syntax
-			cvar = jointext(conditionalToken.Copy(cvar_start+1, conditionalToken.len), "")
-
-		//make the token and add it, parsing its block as a separate tokenset
-		var/path = ttype2type(cType)
-		tokenGroup += new path (null, cvar, makeTokenSet(stringLit))
-		stringLit = list()
-
+	if (conditionalSkips > 0) //no matching endif block
+		throw EXCEPTION("Expected T_TOKEN_ENDIF ([conditionalToken.Join("")] has no closure)")
 
 	if (length(stringLit)) //finalize the end of the file into a stringLit
 		tokenGroup += new /datum/templateToken/TStringLiteral(null, stringLit.Join(""))
@@ -229,7 +217,8 @@
 	return jointext(tokenSet.compute(variables), "")
 
 /datum/template/proc/computeDiff(newVars)
-	return tokenSet.computeDiff(newVars)
+	variables = newVars|variables
+	return tokenSet.computeDiff(variables)
 
 
 /datum/template/proc/setvar(name, variable)

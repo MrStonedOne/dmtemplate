@@ -42,7 +42,7 @@
 	return stringLiteral
 
 /datum/templateToken/TStringLiteral/TEscapedVariable/New(selector, stringLiteral)
-	src.stringLiteral = copytext(stringLiteral, 2)
+	src.stringLiteral = "{[copytext(stringLiteral, 2)]}"
 
 /datum/templateToken/TVariable
 	var/variable
@@ -224,7 +224,7 @@
 		else
 			valueSet["[variable]-KEY"] = "[item]"
 			if (!isnum(item) && ("[variable]-VALUE" in varSet))
-				valueSet["[variable]-VALUE"] = "L[item]"
+				valueSet["[variable]-VALUE"] = "[L[item]]"
 
 		valueSet["[variable]-INDEX"] = i
 		var/datum/tokenSet/currentTokenSet = tokenSet
@@ -279,7 +279,7 @@
 		else
 			valueSet["[variable]-KEY"] = "[item]"
 			if (!isnum(item) && ("[variable]-VALUE" in varSet))
-				valueSet["[variable]-VALUE"] = "L[item]"
+				valueSet["[variable]-VALUE"] = "[L[item]]"
 
 		valueSet["[variable]-INDEX"] = i
 		var/datum/tokenSet/currentTokenSet = cachedTokenSets[i]
@@ -309,6 +309,7 @@
 /datum/templateToken/TConditional/TUpdatingBlock/computeDiff(list/variables, selectorAppend)
 	for (var/variable in varSet)
 		if (valueSet[variable] ~! variables[variable])
+			lastRes = FALSE
 			return ..()
 
 
