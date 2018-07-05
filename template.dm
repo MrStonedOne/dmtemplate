@@ -22,11 +22,13 @@
 		return
 
 	file = name
-	src.variables = variables || list()
+	src.variables = variables
 	if (!name)
 		return
 	if (!tokenSets[name])
-		tokenSets[name] = makeTokenSet(file2text("templates/[name].tpl"))
+		tokenSets[name] = makeTokenSet("[file].tpl", file2text("templates/[name].tpl"))
+	if (!tokenSets[name])
+		CRASH("Unable to parse template: [name]")
 	var/datum/tokenSet/TS = tokenSets[name]
 	tokenSet = TS.dupe()
 	#ifdef TESTING
@@ -36,10 +38,8 @@
 
 //Generates (and returns) a tokenSet object from the template text passed to it.
 //	this function is recursive
-//The broad overview is that the proc loops through the provided text character by character and
-//	puts the character into one of 3 buckets based on state. Creating token objects when it can.
-//tplText can be a list of characters or a string.
-/proc/makeTokenSet(tplText)
+
+/proc/makeTokenSet(file = "MEMORY", tplText)
 	var/list/tokenGroup = list()
 
 	//position tracking
@@ -54,36 +54,37 @@
 
 	var/k = length(tplText)
 
-	var/list/searchingFor = list("{")
+	var/list/searchingFor = list("{") //stack, each item containing a string of characters to search for.
 
 	var/i = 0
 	while (i < k)
-		if (searchingFor.len)
-			i += 1+nonspantext(tplText, searchingFor[searchingFor.len], i+1)
+		i += 1+nonspantext(tplText, searchingFor[searchingFor.len], i+1)
 
 		if (i > k)
 			break
 		var/char = tplText[i]
+
+
 		if (char == "{" && tplText[i+1] == "{") //Start of a token
 			bracket = TRUE
 			tokenStart = i
-			i++
-			searchingFor += "}\\\""
+			i++ //consume the second bracket character
+			searchingFor += "}\\\"" //update the searching stack
 
 
-		if (bracket) //we are currently reading a {} bracket token, lets see if we found the end
+		if (bracket) //we are currently looking for the end of a {{}} bracket token
 			if (char == "\\")
-				i++
+				i++ //consume the next character
 				continue
 			else if (char == "\"")
 				if (searchingFor[searchingFor.len] != "\"")
-					searchingFor += "\""
+					searchingFor += "\"" //we are now only searching for double quotes
 				else
-					searchingFor.len--
+					searchingFor.len-- //we found the other double quotes, pop our search off the stack
 				continue
 			else if (char == "}" && tplText[i+1] == "}") //we found the end, lets parse it
-				i++
-				searchingFor.len--
+				i++  //consume the second bracket character
+				searchingFor.len-- //pop our search off the stack
 				var/tType = tokenType(copytext(tplText, tokenStart, i+1))
 
 				//We are currently looking for the closing token of a conditional block
@@ -97,18 +98,18 @@
 						continue
 
 					//if we got here, the count was higher then 0, but now its not, we have our closing token. Time to parse the conditional token as a whole.
-					var/conditionalToken = copytext(tplText, cTokenStart, cTokenEnd+1)
-					var/cType = tokenType(conditionalToken) //get the stored starting conditional token's type
+					var/conditionalToken = copytext(tplText, cTokenStart, cTokenEnd+1) //grab the original token
+					var/cType = tokenType(conditionalToken)
 					var/cvar = "" //what var does the condition rely on.
 					var/cvar_start = findtext(conditionalToken, ":")
 					if (cvar_start) //conditional tokens without a reliant var is valid syntax
 						cvar = copytext(conditionalToken, cvar_start+1, -2)
 
 					//make the token and add it, parsing its block as a separate tokenset
-					if (stringStart < cTokenStart)
+					if (stringStart < cTokenStart) //but first we have to consume the stringLit before the token
 						tokenGroup += new /datum/templateToken/TStringLiteral(null, copytext(tplText, stringStart, cTokenStart))
 					var/path = tType2type(cType)
-					tokenGroup += new path (null, cvar, makeTokenSet(copytext(tplText, cTokenEnd+1, tokenStart)))
+					tokenGroup += new path (null, cvar, makeTokenSet(file, copytext(tplText, cTokenEnd+1, tokenStart)))
 
 					//reset state and continue
 					bracket = FALSE
@@ -116,15 +117,15 @@
 					continue
 
 
-				//do token stuff:
-
-				//unhandled types, treat as string lit, reset state, and continue;
+				//unhandled types are treated as string lit
 				else if (!tType)
 					bracket = FALSE
 					continue
 
 
-				else if (tType > T_TOKEN_ENDIF)
+				else if (tType >= T_TOKEN_ENDIF) //conditional token
+					if (tType == T_TOKEN_ENDIF)
+						throw EXCEPTION("[file]: Unexpected T_TOKEN_ENDIF ([copytext(tplText, tokenStart, i+1)])")
 					conditionalSkips = 1
 					cTokenEnd = i
 					cTokenStart = tokenStart
@@ -140,15 +141,12 @@
 					stringStart = i+1
 					bracket = FALSE
 
-		else if (!stringStart)
-			stringStart = i
-
 
 
 	//reached the end, finalize things.
 
 	if (conditionalSkips > 0) //no matching endif block
-		throw EXCEPTION("Expected T_TOKEN_ENDIF ([copytext(tplText, cTokenStart, cTokenEnd+2)] has no closure)")
+		throw EXCEPTION("[file]: Expected T_TOKEN_ENDIF ([copytext(tplText, cTokenStart, cTokenEnd+2)] has no closure)")
 
 	if (stringStart < i) //finalize the end of the file into a stringLit
 		tokenGroup += new /datum/templateToken/TStringLiteral(null, copytext(tplText, stringStart, k+1))
@@ -166,7 +164,6 @@
 			var/colonstart = findtext(bText, ":")
 			if (colonstart)
 				bText = copytext(bText, 1, colonstart)
-			world.log << "[token]|||[bText]"
 			switch (bText)
 				if ("ENDIF")
 					tType = T_TOKEN_ENDIF
@@ -231,7 +228,6 @@
 
 
 /datum/template/proc/setvar(name, variable)
-	world.log << "\ref[variables]|||isnull(variables)|||islist(variables)"
 	variables[name] = variable
 
 
