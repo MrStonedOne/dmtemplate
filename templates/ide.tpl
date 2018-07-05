@@ -64,22 +64,22 @@
 		<div class="column">
 			<h3>Template</h3>
 			<textarea rows="32" cols="40" id="tpltext">
-<h2>Hello {!#IFDEF:NAME}{!NAME}{!#ENDIF}{!#IFNDEF:NAME}Person{!#ENDIF}</h2>
+<h2>Hello {{!#IFDEF:NAME}}{{!NAME}}{{!#ENDIF}}{{!#IFNDEF:NAME}}Person{{!#ENDIF}}</h2>
 
-{!#IFNEMPTY:MESSAGES}
+{{!#IFNEMPTY:MESSAGES}}
 <P>You have new messages</P>
-{!#ARRAY:MESSAGES}
-<P><b>Message</b> #{!MESSAGES-INDEX}</P>
-<P><b>From:</b> {!AUTHOR}</P>
-<P><b>Contents:</b> {!MESSAGE}</P>
+{{!#ARRAY:MESSAGES}}
+<P><b>Message</b> #{{!MESSAGES-INDEX}}</P>
+<P><b>From:</b> {{!AUTHOR}}</P>
+<P><b>Contents:</b> {{!MESSAGE}}</P>
 <br>
-{!/ARRAY}
-{!#ENDIF}
-{!#IFEMPTY:MESSAGES}
+{{!/ARRAY}}
+{{!#ENDIF}}
+{{!#IFEMPTY:MESSAGES}}
 You have no new messages
-{!#ENDIF}
-{!!END}
-{!#IFDEF}
+{{!#ENDIF}}
+{{!!END}}
+{{!#IFDEF}}
 You can do an ifdef with no variable for template comments.
 
 Brackets are not parsed if there is any spaces within them.
@@ -89,15 +89,15 @@ You can escape brackets with a ! in the first character.
 Within arrays if the list value isn't itself a list, you can use VARNAME-KEY and VARNAME-VALUE to access the actual values.
 
 Most of this syntax is subject to change as i'll be rewriting the compiler to be faster and in the mist of that making it more compatible with existing tgui templates.
-{!#ENDIF}
+{{!#ENDIF}}
 </textarea>
-			{#IFDEF:%TPLERROR}
-				<p class="error">{%TPLERROR}</p>
-			{#ENDIF}
+			{{#IFDEF:%TPLERROR}}
+				<p class="error">{{%TPLERROR}}</p>
+			{{#ENDIF}}
 		</div>
 		<div class="column">
 			<h3>Rendered</h3>
-			{%RENDERED}
+			{{%RENDERED}}
 		</div>
 		<div class="column">
 			<h3>Data</h3>
@@ -114,9 +114,9 @@ Most of this syntax is subject to change as i'll be rewriting the compiler to be
     }
 ]
 }</textarea>
-			{#IFDEF:%JSONERROR}
-				<p class="error">{%JSONERROR}</p>
-			{#ENDIF}
+			{{#IFDEF:%JSONERROR}}
+				<p class="error">{{%JSONERROR}}</p>
+			{{#ENDIF}}
 		</div>
 	</div>
 	<div id="log"></div>
