@@ -22,7 +22,7 @@
 		return
 
 	file = name
-	src.variables = variables
+	src.variables = variables || list()
 	if (!name)
 		return
 	if (!tokenSets[name])
@@ -30,7 +30,7 @@
 	var/datum/tokenSet/TS = tokenSets[name]
 	tokenSet = TS.dupe()
 	#ifdef TESTING
-		setvar("TESTING", "TRUE")
+	setvar("TESTING", "TRUE")
 	#endif
 
 
@@ -39,33 +39,52 @@
 //The broad overview is that the proc loops through the provided text character by character and
 //	puts the character into one of 3 buckets based on state. Creating token objects when it can.
 //tplText can be a list of characters or a string.
-/datum/template/proc/makeTokenSet(tplText, name = name)
+/proc/makeTokenSet(tplText)
 	var/list/tokenGroup = list()
 
-	//buckets
-	var/list/stringLit = list() //stores the current text block to be added to a TStringLiteral object once we hit a bracket token.
-	var/list/bracketTemp = list() //store the incomplete token while we parse it. When looking for a matching {#ENDIF}, this stores the entire text between the condition blocks.
-	var/list/conditionalToken = list() //stores the conditional token in full for later parsing
+	//position tracking
+	var/stringStart = 1 //Position of the start of a string lit object
+	var/tokenStart = 0 //Position of the start of the current token block
+	var/cTokenStart = 0 //Position of the start of the conditional token currently being blocked
+	var/cTokenEnd = 0 //Position of the end of the conditional token currently being blocked
 
 	//state
-	var/bracket = FALSE
-	var/conditionalSkips = 0
+	var/bracket = FALSE //tracks if we are in the middle of parsing a bracket object
+	var/conditionalSkips = 0 //tracks nesting of conditional tokens
 
 	var/k = length(tplText)
-	for (var/i in 1 to k)
+
+	var/list/searchingFor = list("{")
+
+	var/i = 0
+	while (i < k)
+		if (searchingFor.len)
+			i += 1+nonspantext(tplText, searchingFor[searchingFor.len], i+1)
+
+		if (i > k)
+			break
 		var/char = tplText[i]
-		if (char == "{") //Start of a token
-
-			if (bracket) //the innermost open bracket is what we want (eg {{VAR}} should print {1} if VAR was equal to 1)
-				stringLit += bracketTemp;
-				bracketTemp = list()
-
+		if (char == "{" && tplText[i+1] == "{") //Start of a token
 			bracket = TRUE
+			tokenStart = i
+			i++
+			searchingFor += "}\\\""
+
 
 		if (bracket) //we are currently reading a {} bracket token, lets see if we found the end
-			bracketTemp += char //add the current char to the bracket's bucket
-			if (char == "}") //we found the end, lets parse it
-				var/tType = tokenType(bracketTemp)
+			if (char == "\\")
+				i++
+				continue
+			else if (char == "\"")
+				if (searchingFor[searchingFor.len] != "\"")
+					searchingFor += "\""
+				else
+					searchingFor.len--
+				continue
+			else if (char == "}" && tplText[i+1] == "}") //we found the end, lets parse it
+				i++
+				searchingFor.len--
+				var/tType = tokenType(copytext(tplText, tokenStart, i+1))
 
 				//We are currently looking for the closing token of a conditional block
 				if (conditionalSkips > 0)
@@ -74,91 +93,81 @@
 					else if (tType == T_TOKEN_ENDIF)
 						conditionalSkips-- //closing token, lower that same number.
 
-					if (conditionalSkips > 0) //Still higher then 0, dump the bracket into the string bucket and move on.
-						stringLit += bracketTemp
-						bracket = FALSE
-						bracketTemp = list()
+					if (conditionalSkips > 0) //Still higher then 0, move on.
 						continue
 
 					//if we got here, the count was higher then 0, but now its not, we have our closing token. Time to parse the conditional token as a whole.
-
+					var/conditionalToken = copytext(tplText, cTokenStart, cTokenEnd+1)
 					var/cType = tokenType(conditionalToken) //get the stored starting conditional token's type
 					var/cvar = "" //what var does the condition rely on.
-					var/cvar_start = conditionalToken.Find(":")
-					if (cvar_start) //conditional tokens without a reliant var is valid syntax (it lets one do comments)
-						cvar = jointext(conditionalToken.Copy(cvar_start+1, conditionalToken.len), "")
+					var/cvar_start = findtext(conditionalToken, ":")
+					if (cvar_start) //conditional tokens without a reliant var is valid syntax
+						cvar = copytext(conditionalToken, cvar_start+1, -2)
 
 					//make the token and add it, parsing its block as a separate tokenset
-					var/path = ttype2type(cType)
-					tokenGroup += new path (null, cvar, makeTokenSet(stringLit, "[name]"))
+					if (stringStart < cTokenStart)
+						tokenGroup += new /datum/templateToken/TStringLiteral(null, copytext(tplText, stringStart, cTokenStart))
+					var/path = tType2type(cType)
+					tokenGroup += new path (null, cvar, makeTokenSet(copytext(tplText, cTokenEnd+1, tokenStart)))
 
 					//reset state and continue
 					bracket = FALSE
-					bracketTemp = list()
-					stringLit = list()
-					conditionalToken = list()
-					conditionalSkips = 0
+					stringStart = i+1
+					continue
+
 
 				//do token stuff:
 
 				//unhandled types, treat as string lit, reset state, and continue;
 				else if (!tType)
-					stringLit += bracketTemp
-					bracketTemp = list()
-					bracket = TRUE
-
-
-				else if (tType >= T_TOKEN_ENDIF)
-					conditionalToken = bracketTemp
-					conditionalSkips = 1
-
-					if (length(stringLit))
-						tokenGroup += new /datum/templateToken/TStringLiteral(null, stringLit.Join(""))
-					bracketTemp = list()
-					stringLit = list()
 					bracket = FALSE
+					continue
+
+
+				else if (tType > T_TOKEN_ENDIF)
+					conditionalSkips = 1
+					cTokenEnd = i
+					cTokenStart = tokenStart
+					bracket = FALSE
+					continue
 
 				else
-					var/list/tVar = bracketTemp.Copy(2, bracketTemp.len)
-					if (length(stringLit))
-						tokenGroup += new /datum/templateToken/TStringLiteral(null, stringLit.Join(""))
-					var/tPath = ttype2type(tType)
-					tokenGroup += new tPath (null, tVar.Join(""))
-					bracketTemp = list()
-					stringLit = list()
+					var/tVar = copytext(tplText, tokenStart+2, i-1)
+					if (stringStart < tokenStart)
+						tokenGroup += new /datum/templateToken/TStringLiteral(null, copytext(tplText, stringStart, tokenStart))
+					var/tPath = tType2type(tType)
+					tokenGroup += new tPath (null, tVar)
+					stringStart = i+1
 					bracket = FALSE
 
-			else if (text2ascii(char) <= 32)  //white space, {} vars don't have whitespace, reset and move on
-				stringLit += bracketTemp
-				bracketTemp = list()
-				bracket = FALSE
-
-		else
-			stringLit += char
+		else if (!stringStart)
+			stringStart = i
 
 
 
 	//reached the end, finalize things.
-	stringLit += bracketTemp
 
 	if (conditionalSkips > 0) //no matching endif block
-		throw EXCEPTION("Expected T_TOKEN_ENDIF ([conditionalToken.Join("")] has no closure)")
+		throw EXCEPTION("Expected T_TOKEN_ENDIF ([copytext(tplText, cTokenStart, cTokenEnd+2)] has no closure)")
 
-	if (length(stringLit)) //finalize the end of the file into a stringLit
-		tokenGroup += new /datum/templateToken/TStringLiteral(null, stringLit.Join(""))
+	if (stringStart < i) //finalize the end of the file into a stringLit
+		tokenGroup += new /datum/templateToken/TStringLiteral(null, copytext(tplText, stringStart, k+1))
 
 	return new /datum/tokenSet(tokenGroup)
 
-/datum/template/proc/tokenType(list/token)
-	var/tType = T_TOKEN_VARIABLE;
-	switch(token[2])
-		if ("#")
-			var/list/bText = token.Copy(3, token.len)
-			var/colonstart = bText.Find(":")
-			if (colonstart)
-				bText.Cut(colonstart)
 
-			switch (bText.Join())
+
+/proc/tokenType(token)
+	var/tType = T_TOKEN_VARIABLE
+	switch(token[3])
+		if ("#")
+			var/bText = copytext(token, 4, -2)
+
+			var/colonstart = findtext(bText, ":")
+			if (colonstart)
+				bText = copytext(bText, 1, colonstart)
+			world.log << "[token]|||[bText]"
+			switch (bText)
 				if ("ENDIF")
 					tType = T_TOKEN_ENDIF
 
@@ -181,14 +190,14 @@
 			tType = T_TOKEN_ESCAPED_VARIABLE
 
 		if ("%")
-			if (length(token) == 3)
+			if (length(token) == 5)
 				tType = T_TOKEN_UPDATING_BLOCK
 		if ("/")
 			tType = T_TOKEN_ENDIF
 
 	return tType
 
-/datum/template/proc/ttype2type(tType)
+/proc/tType2type(tType)
 	switch(tType)
 		if (T_TOKEN_STRINGLIT)
 			return /datum/templateToken/TStringLiteral
@@ -222,6 +231,7 @@
 
 
 /datum/template/proc/setvar(name, variable)
+	world.log << "\ref[variables]|||isnull(variables)|||islist(variables)"
 	variables[name] = variable
 
 

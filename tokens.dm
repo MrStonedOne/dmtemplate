@@ -42,7 +42,7 @@
 	return stringLiteral
 
 /datum/templateToken/TStringLiteral/TEscapedVariable/New(selector, stringLiteral)
-	src.stringLiteral = "{[copytext(stringLiteral, 2)]}"
+	src.stringLiteral = "{{[copytext(stringLiteral, 2)]}}"
 
 /datum/templateToken/TVariable
 	var/variable
@@ -73,7 +73,7 @@
 			isset = TRUE
 		else
 			//unset variables are printed as is.
-			return "{[variable]}"
+			return "{{[variable]}}"
 
 	return value
 
