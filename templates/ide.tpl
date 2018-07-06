@@ -10,24 +10,26 @@
 		<script type="text/javascript" src="jquery-ui.js"></script>
 		<script type="text/javascript" src="html_interface.js"></script>
 		<script type="text/javascript">
-			function runByond(uri) {
-				window.location = uri;
+			
+			
+			function runByond(data) {
+				$.get("?tgui2", data);
 			}
 			var tplsendjob;
 			var jsonsendjob;
 			$(document).ready(function() {
 				$("#tpltext").keyup(function(event) {
 					clearTimeout(tplsendjob);
-					tplsendjob = setTimeout(function () {runByond("?action=tplupdate&text="+encodeURIComponent($(event.target).val()))}, 200);
+					tplsendjob = setTimeout(function () {runByond({"blah":"yes", "action":"tplupdate", "text":$(event.target).val()});}, 200);
 				});
 
 				$("#jsontext").keyup(function(event) {
 					clearTimeout(jsonsendjob);
-					jsonsendjob = setTimeout(function () {runByond("?action=jsonupdate&text="+encodeURIComponent($(event.target).val()))}, 200);
+					jsonsendjob = setTimeout(function () {runByond({"blah":"yes", "action":"jsonupdate", "text":$(event.target).val()});}, 200);
 				});
 				$("textarea").resizable();
-				runByond("?action=tplupdate&text="+encodeURIComponent($("#tpltext").val()));
-				runByond("?action=jsonupdate&text="+encodeURIComponent($("#jsontext").val()));
+				runByond({"blah":"yes", "action":"tplupdate", "text":$("#tpltext").val()});
+				runByond({"blah":"yes", "action":"jsonupdate", "text":$("#jsontext").val()});
 			});
 		</script>
 		<style>
