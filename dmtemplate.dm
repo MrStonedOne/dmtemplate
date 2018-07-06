@@ -11,9 +11,10 @@
 
 
 /client/verb/Openide()
-	var/list/files = list("html_interface.js" = 'html_interface.js', "jquery.min.js" = 'jquery.min.js', "jquery-ui.js" = 'jquery-ui.min.js', "jquery-ui.css" = 'jquery-ui.min.css')
+	var/list/files = list("html_interface.js" = "html_interface.js", "jquery.min.js" = "jquery.min.js", "jquery-ui.js" = "jquery-ui.min.js", "jquery-ui.css" = "jquery-ui.min.css")
 	for (var/filename in files)
-		src << browse_rsc(files[filename], filename)
+		src << browse_rsc(file(files[filename]), filename)
+	idetemplate.tokenSet = makeTokenSet("ide.tpl", file2text("templates/ide.tpl"))
 	ideinnertemplate.tokenSet = makeTokenSet(null, "")
 	idetemplate.setvar("RENDERED", ideinnertemplate.compute())
 	src << browse(idetemplate.compute(), "window=tgtemplateide;size=1100x650")
