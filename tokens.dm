@@ -49,15 +49,14 @@
 	var/isset = FALSE
 	var/value = ""
 
-/datum/templateToken/TVariable/New(selector, variable)
+/datum/templateToken/TVariable/New(selector, tContents)
 	//world << "selector:[selector], variable:[variable]"
-	if (length(variable) >= 1 && variable[1] == "%")
-		//world << "not batman"
-		variable = copytext(variable, 2)
+	if (length(tContents) >= 1 && tContents[1] == "%")
+		tContents = copytext(tContents, 2)
 		..()
 	else if (selector)
 		..()
-	src.variable = variable
+	variable = tContents
 
 
 /datum/templateToken/TVariable/getRequestedVars()
@@ -112,7 +111,11 @@
 	var/lastRes = FALSE
 
 
-/datum/templateToken/TConditional/New(selector, variable, datum/tokenSet/tokenSet)
+/datum/templateToken/TConditional/New(selector, tContents, datum/tokenSet/tokenSet)
+	var/variable = "" //what var does the condition rely on.
+	var/var_start = findtext(tContents, ":")
+	if (var_start) //conditional tokens without a reliant var is valid syntax
+		variable = copytext(tContents, var_start+1, -2)
 	if (length(variable) >= 1 && variable[1] == "%")
 		variable = copytext(variable, 2)
 		..()
@@ -297,11 +300,11 @@
 
 	return res
 
-/datum/templateToken/TConditional/TUpdatingBlock/New(selector, variable, datum/tokenSet/tokenSet)
+/datum/templateToken/TConditional/TUpdatingBlock/New(selector, tContents, datum/tokenSet/tokenSet)
 	if (isnull(selector))
 		selector = "token-[num2text(nextid++, 99)]"
 
-	..(selector, variable, tokenSet)
+	..(selector, tContents, tokenSet)
 
 /datum/templateToken/TConditional/TUpdatingBlock/checkCondition()
 	return TRUE
