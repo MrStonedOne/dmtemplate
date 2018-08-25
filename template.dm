@@ -77,8 +77,8 @@
 				i++ //consume the next character
 				continue
 			else if (char == "\"")
-				if (searchingFor[searchingFor.len] != "\"")
-					searchingFor += "\"" //we are now only searching for double quotes
+				if (searchingFor[searchingFor.len] != "\\\"")
+					searchingFor += "\\\"" //we are now only searching for double quotes
 				else
 					searchingFor.len-- //we found the other double quotes, pop our search off the stack
 				continue
@@ -100,16 +100,12 @@
 					//if we got here, the count was higher then 0, but now its not, we have our closing token. Time to parse the conditional token as a whole.
 					var/conditionalToken = copytext(tplText, cTokenStart, cTokenEnd+1) //grab the original token
 					var/cType = tokenType(conditionalToken)
-					var/cvar = "" //what var does the condition rely on.
-					var/cvar_start = findtext(conditionalToken, ":")
-					if (cvar_start) //conditional tokens without a reliant var is valid syntax
-						cvar = copytext(conditionalToken, cvar_start+1, -2)
 
 					//make the token and add it, parsing its block as a separate tokenset
 					if (stringStart < cTokenStart) //but first we have to consume the stringLit before the token
 						tokenGroup += new /datum/templateToken/TStringLiteral(null, copytext(tplText, stringStart, cTokenStart))
 					var/path = tType2type(cType)
-					tokenGroup += new path (null, cvar, makeTokenSet(file, copytext(tplText, cTokenEnd+1, tokenStart)))
+					tokenGroup += new path (null, conditionalToken, makeTokenSet(file, copytext(tplText, cTokenEnd+1, tokenStart)))
 
 					//reset state and continue
 					bracket = FALSE
@@ -133,11 +129,11 @@
 					continue
 
 				else
-					var/tVar = copytext(tplText, tokenStart+2, i-1)
+					var/tContents = copytext(tplText, tokenStart+2, i-1)
 					if (stringStart < tokenStart)
 						tokenGroup += new /datum/templateToken/TStringLiteral(null, copytext(tplText, stringStart, tokenStart))
 					var/tPath = tType2type(tType)
-					tokenGroup += new tPath (null, tVar)
+					tokenGroup += new tPath (null, tContents)
 					stringStart = i+1
 					bracket = FALSE
 
@@ -146,7 +142,7 @@
 	//reached the end, finalize things.
 
 	if (conditionalSkips > 0) //no matching endif block
-		throw EXCEPTION("[file]: Expected T_TOKEN_ENDIF ([copytext(tplText, cTokenStart, cTokenEnd+2)] has no closure)")
+		throw EXCEPTION("[file]: Expected T_TOKEN_ENDIF ([copytext(tplText, cTokenStart, cTokenEnd+1)] has no closure)")
 
 	if (stringStart < i) //finalize the end of the file into a stringLit
 		tokenGroup += new /datum/templateToken/TStringLiteral(null, copytext(tplText, stringStart, k+1))

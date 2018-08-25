@@ -1,11 +1,13 @@
 function fixText(text)	{ 
 	return text.replace(/ÿ/g, ""); 
 }
-
+/*
 function addlog(text) {
 	$("#log").append("<p>"+text+"</p>");
+}*/
+function runByond(data) {
+	$.get("?tgui2=1", data);
 }
-
 function updateContent(jsontext) {
 	$.each(JSON.parse(jsontext), function (id, action) {
 		var actiontype = Object.keys(action)[0];
@@ -30,7 +32,7 @@ function updateContent(jsontext) {
 				$("#" + id).remove();
 				break;
 			default:
-				addlog("unknown action type " + actiontype);
+				//addlog("unknown action type " + actiontype);
 				break;
 		}
 	});
