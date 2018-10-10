@@ -1,6 +1,16 @@
 //TG Template system
 //Originally adopted from the SCC release used by SceneXpress, massively modified since
 
+var/list/compile_time_template_variables = list (
+	"null" = null,
+#ifdef TESTING
+	"TESTING" = TRUE,
+#endif
+	"TRUE" = TRUE,
+	"FALSE" = FALSE
+
+)
+
 /datum/template
 	var/static/list/tokenSets = list()
 	var/datum/tokenSet/tokenSet
@@ -22,23 +32,21 @@
 		return
 
 	file = name
-	src.variables = variables
+	src.variables = variables | compile_time_template_variables
 	if (!name)
 		return
 	if (!tokenSets[name])
-		tokenSets[name] = makeTokenSet("[file].tpl", file2text("templates/[name].tpl"))
-	if (!tokenSets[name])
-		CRASH("Unable to parse template: [name]")
+		tokenSets[name] = new /datum/tokenSet(makeTokenSet("[file].tpl", file2text("templates/[name].tpl")))
+
 	var/datum/tokenSet/TS = tokenSets[name]
-	tokenSet = TS.dupe()
-	#ifdef TESTING
-	setvar("TESTING", "TRUE")
-	#endif
+	if (!TS)
+		CRASH("Unable to parse template: [name]")
+
+	tokenSet = new /datum/tokenSet(TS.dupe())
 
 
 //Generates (and returns) a tokenSet object from the template text passed to it.
 //	this function is recursive
-
 /proc/makeTokenSet(file = "MEMORY", tplText)
 	var/list/tokenGroup = list()
 
@@ -69,11 +77,12 @@
 			bracket = TRUE
 			tokenStart = i
 			i++ //consume the second bracket character
-			searchingFor += "}\\\"" //update the searching stack
+			//searchingFor += "}\\\"" //update the searching stack
+			searchingFor += "}" //update the searching stack
 
 
 		if (bracket) //we are currently looking for the end of a {{}} bracket token
-			if (char == "\\")
+			/*if (char == "\\")
 				i++ //consume the next character
 				continue
 			else if (char == "\"")
@@ -82,14 +91,15 @@
 				else
 					searchingFor.len-- //we found the other double quotes, pop our search off the stack
 				continue
-			else if (char == "}" && tplText[i+1] == "}") //we found the end, lets parse it
+
+			else*/if (char == "}" && tplText[i+1] == "}") //we found the end, lets parse it
 				i++  //consume the second bracket character
 				searchingFor.len-- //pop our search off the stack
 				var/tType = tokenType(copytext(tplText, tokenStart, i+1))
 
 				//We are currently looking for the closing token of a conditional block
 				if (conditionalSkips > 0)
-					if (tType > T_TOKEN_ENDIF)
+					if (tType > T_TOKEN_ELSE)
 						conditionalSkips++ //nested conditional block, increase the number of closing tokens we are looking for.
 					else if (tType == T_TOKEN_ENDIF)
 						conditionalSkips-- //closing token, lower that same number.
@@ -105,7 +115,8 @@
 					if (stringStart < cTokenStart) //but first we have to consume the stringLit before the token
 						tokenGroup += new /datum/templateToken/TStringLiteral(null, copytext(tplText, stringStart, cTokenStart))
 					var/path = tType2type(cType)
-					tokenGroup += new path (null, conditionalToken, makeTokenSet(file, copytext(tplText, cTokenEnd+1, tokenStart)))
+
+					tokenGroup += new path (null, copytext(conditionalToken, 3, -2), makeTokenSet(file, copytext(tplText, cTokenEnd+1, tokenStart)))
 
 					//reset state and continue
 					bracket = FALSE
@@ -118,10 +129,10 @@
 					bracket = FALSE
 					continue
 
+				else if (tType == T_TOKEN_ENDIF)
+					throw EXCEPTION("[file]: Unexpected T_TOKEN_ENDIF ([copytext(tplText, tokenStart, i+1)])")
 
-				else if (tType >= T_TOKEN_ENDIF) //conditional token
-					if (tType == T_TOKEN_ENDIF)
-						throw EXCEPTION("[file]: Unexpected T_TOKEN_ENDIF ([copytext(tplText, tokenStart, i+1)])")
+				else if (tType > T_TOKEN_ELSE) //conditional token
 					conditionalSkips = 1
 					cTokenEnd = i
 					cTokenStart = tokenStart
@@ -147,7 +158,7 @@
 	if (stringStart < i) //finalize the end of the file into a stringLit
 		tokenGroup += new /datum/templateToken/TStringLiteral(null, copytext(tplText, stringStart, k+1))
 
-	return new /datum/tokenSet(tokenGroup)
+	return tokenGroup
 
 
 
@@ -157,27 +168,30 @@
 		if ("#")
 			var/bText = copytext(token, 4, -2)
 
-			var/colonstart = findtext(bText, ":")
-			if (colonstart)
-				bText = copytext(bText, 1, colonstart)
+			var/spacestart = findtext(bText, " ")
+			if (spacestart)
+				bText = copytext(bText, 1, spacestart)
 			switch (bText)
-				if ("ENDIF")
+				if ("else")
+					tType = T_TOKEN_ELSE
+				if ("endif")
 					tType = T_TOKEN_ENDIF
-
-				if ("IFDEF")
-					tType = T_TOKEN_IFDEF
-
-				if ("IFNDEF")
-					tType = T_TOKEN_IFNDEF
-
-				if ("ARRAY")
-					tType = T_TOKEN_ARRAY
-
-				if ("IFEMPTY")
+				if ("if")
+					tType = T_TOKEN_IF
+				if ("if!")
+					tType = T_TOKEN_IFN
+				if ("foreach")
+					tType = T_TOKEN_FOREACH
+				if ("ifempty")
 					tType = T_TOKEN_IFEMPTY
-
-				if ("IFNEMPTY")
+				if ("ifempty!")
 					tType = T_TOKEN_IFNEMPTY
+				if ("switch")
+					tType = T_TOKEN_SWITCH
+				if ("case")
+					tType = T_TOKEN_CASE
+				if ("default")
+					tType = T_TOKEN_DEFAULT
 
 		if ("!")
 			tType = T_TOKEN_ESCAPED_VARIABLE
@@ -200,16 +214,24 @@
 			return /datum/templateToken/TStringLiteral/TEscapedVariable
 		if (T_TOKEN_ENDIF)
 			return null
-		if (T_TOKEN_IFDEF)
-			return /datum/templateToken/TConditional/TIfDef
-		if (T_TOKEN_IFNDEF)
-			return /datum/templateToken/TConditional/TIfnDef
-		if (T_TOKEN_ARRAY)
-			return /datum/templateToken/TConditional/TIfnEmpty/TArray
+		if (T_TOKEN_ELSE)
+			return /datum/templateToken/TConditional/TElse
+		if (T_TOKEN_IF)
+			return /datum/templateToken/TConditional/TIf
+		if (T_TOKEN_IFN)
+			return /datum/templateToken/TConditional/TIf/TIfn
+		if (T_TOKEN_FOREACH)
+			return /datum/templateToken/TConditional/TIfEmpty/TIfnEmpty/TForEach
 		if (T_TOKEN_IFEMPTY)
 			return /datum/templateToken/TConditional/TIfEmpty
 		if (T_TOKEN_IFNEMPTY)
-			return /datum/templateToken/TConditional/TIfnEmpty
+			return /datum/templateToken/TConditional/TIfEmpty/TIfnEmpty
+		if (T_TOKEN_SWITCH)
+			return /datum/templateToken/TConditional/TSwitch
+		if (T_TOKEN_CASE)
+			return /datum/templateToken/TConditional/TCase
+		if (T_TOKEN_DEFAULT)
+			return /datum/templateToken/TConditional/TElse/TDefault
 		if (T_TOKEN_UPDATING_BLOCK)
 			return /datum/templateToken/TConditional/TUpdatingBlock
 		else
@@ -228,4 +250,4 @@
 
 
 /datum/template/proc/resetvars(list/variables)
-	src.variables = variables || list()
+	src.variables = (variables || list()) | compile_time_template_variables

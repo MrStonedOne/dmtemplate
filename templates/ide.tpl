@@ -64,59 +64,54 @@
 		<div class="column">
 			<h3>Template</h3>
 			<textarea rows="32" cols="40" id="tpltext">
-<h2>Hello {{!#IFDEF:NAME}}{{!NAME}}{{!#ENDIF}}{{!#IFNDEF:NAME}}Person{{!#ENDIF}}</h2>
+<h2>Hello {{!#if name}}{{!name}}{{!/if1}}{{!#if! name}}Person{{!/if2}}</h2>
 
-{{!#IFNEMPTY:MESSAGES}}
+{{!#ifempty! messages}}
 <P>You have new messages</P>
-{{!#ARRAY:MESSAGES}}
-<P><b>Message</b> #{{!MESSAGES-INDEX}}</P>
-<P><b>From:</b> {{!AUTHOR}}</P>
-<P><b>Contents:</b> {{!MESSAGE}}</P>
+{{!#foreach messages message_number message_key message_value}}
+<P><b>Message</b> #{{!message_number}}</P>
+<P><b>From:</b> {{!message_key["author"]}}</P>
+<P><b>Contents:</b> {{!message_key["message"]}}</P>
 <br>
-{{!/ARRAY}}
-{{!#ENDIF}}
-{{!#IFEMPTY:MESSAGES}}
+{{!/foreach}}
+{{!/if}}
+{{!#ifempty messages}}
 You have no new messages
-{{!#ENDIF}}
-{{!!END}}
-{{!#IFDEF}}
-You can do an ifdef with no variable for template comments.
-
-Brackets are not parsed if there is any spaces within them.
+{{!/if}}
+{{!!End}}
+{{!#if}}
+You can do an if with no expression for template comments.
 
 You can escape brackets with a ! in the first character.
 
-Within arrays if the list value isn't itself a list, you can use VARNAME-KEY and VARNAME-VALUE to access the actual values.
-
-Most of this syntax is subject to change as i'll be rewriting the compiler to be faster and in the mist of that making it more compatible with existing tgui templates.
-{{!#ENDIF}}
+{{!/if4}}
 </textarea>
-			{{#IFDEF:%TPLERROR}}
-				<p class="error">{{%TPLERROR}}</p>
-			{{#ENDIF}}
+			{{#if %tplerror}}
+				<p class="error">{{%tplerror}}</p>
+			{{/if5}}
 		</div>
 		<div class="column">
 			<h3>Rendered</h3>
-			{{%RENDERED}}
+			{{%*rendered}}
 		</div>
 		<div class="column">
 			<h3>Data</h3>
 			<textarea rows="30" cols="40" id="jsontext">{
-  "NAME": "MrStonedOne",
-  "MESSAGES": [
+  "name": "MrStonedOne",
+  "messages": [
     {
-      "AUTHOR": "Iamgoofball",
-      "MESSAGE": "Rig the election for me please!"
+      "author": "Iamgoofball",
+      "message": "Rig the election for me please!"
     },
     {
-      "AUTHOR": "The Frog",
-      "MESSAGE": "Don't let me win, give mikey all my votes"
+      "author": "The Frog",
+      "message": "Don't let me win, give mikey all my votes"
     }
 ]
 }</textarea>
-			{{#IFDEF:%JSONERROR}}
-				<p class="error">{{%JSONERROR}}</p>
-			{{#ENDIF}}
+			{{#if %jsonerror}}
+				<p class="error">{{%jsonerror}}</p>
+			{{/if6}}
 		</div>
 	</div>
 	<div id="log"></div>
