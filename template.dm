@@ -47,7 +47,7 @@ var/list/compile_time_template_variables = list (
 
 //Generates (and returns) a tokenSet object from the template text passed to it.
 //	this function is recursive
-/proc/makeTokenSet(file = "MEMORY", tplText)
+/proc/makeTokenSet(file = "MEMORY", tplText, line = 1, col = 1)
 	var/list/tokenGroup = list()
 
 	//position tracking
@@ -62,7 +62,7 @@ var/list/compile_time_template_variables = list (
 
 	var/k = length(tplText)
 
-	var/list/searchingFor = list("{") //stack, each item containing a string of characters to search for.
+	var/list/searchingFor = list("{\n") //stack, each item containing a string of characters to search for.
 
 	var/i = 0
 	while (i < k)
@@ -77,22 +77,21 @@ var/list/compile_time_template_variables = list (
 			bracket = TRUE
 			tokenStart = i
 			i++ //consume the second bracket character
-			//searchingFor += "}\\\"" //update the searching stack
-			searchingFor += "}" //update the searching stack
+			searchingFor += "}\\\"\n" //update the searching stack
 
 
 		if (bracket) //we are currently looking for the end of a {{}} bracket token
-			/*if (char == "\\")
+			if (char == "\\")
 				i++ //consume the next character
 				continue
 			else if (char == "\"")
-				if (searchingFor[searchingFor.len] != "\\\"")
-					searchingFor += "\\\"" //we are now only searching for double quotes
+				if (searchingFor[searchingFor.len] != "\\\"\n")
+					searchingFor += "\\\"\n" //we are now only searching for double quotes
 				else
 					searchingFor.len-- //we found the other double quotes, pop our search off the stack
 				continue
 
-			else*/if (char == "}" && tplText[i+1] == "}") //we found the end, lets parse it
+			else if (char == "}" && tplText[i+1] == "}") //we found the end, lets parse it
 				i++  //consume the second bracket character
 				searchingFor.len-- //pop our search off the stack
 				var/tType = tokenType(copytext(tplText, tokenStart, i+1))

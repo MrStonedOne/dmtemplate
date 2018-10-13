@@ -21,8 +21,8 @@
 	idetemplate.setvar("rendered", ideinnertemplate.compute())
 	var/html = idetemplate.compute()
 	src << browse(html, "window=tgtemplateide;size=1100x650")
-	src << html_encode(html)
-	src << html_encode(json_encode(idetemplate.tokenSet.tokens))
+	//src << html_encode(html)
+	//src << html_encode(json_encode(idetemplate.tokenSet.tokens))
 
 
 /client/Topic(href,list/href_list,hsrc)
