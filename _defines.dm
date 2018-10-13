@@ -31,4 +31,7 @@
 #define T_SAN_URL 2
 #define T_SAN_UNSAFE 3
 
+#define T_LISTEN_DIFF 1
+#define T_LISTEN_HIDE 2
+
 #define islist(thing) istype(thing, /list)

@@ -18,6 +18,12 @@
 #include "dmtemplate.dm"
 #include "helpers.dm"
 #include "template.dm"
-#include "tokens.dm"
+#include "token\simple.dm"
+#include "token\token.dm"
+#include "token\tokenset.dm"
+#include "token\conditional\conditional.dm"
+#include "token\conditional\foreach.dm"
+#include "token\conditional\if.dm"
+#include "token\conditional\switch.dm"
 // END_INCLUDE
 
