@@ -1,5 +1,5 @@
 # dmtemplate
-## Live Updating Templating Engine for BYOND.
+### Live Updating Templating Engine for BYOND.
 
 `template.dm` has most of the compiling code
 
